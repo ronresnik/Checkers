@@ -1,0 +1,85 @@
+1. creating a client that can send messages to the server and POC of it
+2. testing very well both sides
+3. creating a simple HTML site using Bootstrap
+(menu with links to login and dissconnect + a chat page that has a message box and a send button---> connect it to python)
+4. Understand/Think of how to store and retrive the messages
+5. connect and operate the whole thing
+
+
+what is a chess board?
+is a big squre that has some other squars inside of him
+tha we need
+Class Board
+Class Regular Troop
+Class Queen Troop
+
+
+ 
+    # def __getattribute__(self, attribute):
+    #     if attribute == "troops_array":
+    #         self.counter+=1
+    #         if self.counter==1:
+    #             array = [[0 for i in range(cols)] for j in range(rows)]
+    #             for x_index in range(TILES_IN_ROW):
+    #                 for y_index in range(TILES_IN_ROW):
+    #                     if isinstance(self._current_troops_array[x_index][y_index], Troop):
+    #                         array[x_index][y_index] = Troop(*[self._current_troops_array[x_index][y_index].__dict__[key] for key in self._current_troops_array[x_index][y_index].__dict__.keys()])
+    #             print("recived new array")
+    #             self.troops_array = array
+    #             return array
+    #         else:
+    #             return object.__getattribute__(self,"troops_array")
+    #     return object.__getattribute__(self,attribute)
+
+
+    
+                    # if mods & pygame.KMOD_CTRL and mods & pygame.KMOD_SHIFT and mods & pygame.KMOD_ALT:
+                    #     print("pressed: CTRL+SHIFT+ALT + A")
+                    # elif mods & pygame.KMOD_CTRL and mods & pygame.KMOD_SHIFT:
+                    #     print("pressed: CTRL+SHIFT + A")
+                    # elif mods & pygame.KMOD_CTRL and mods & pygame.KMOD_ALT:
+                    #     print("pressed: CTRL+ALT + A")
+                    # elif mods & pygame.KMOD_SHIFT and mods & pygame.KMOD_ALT:
+                    #     print("pressed: SHIFT+ALT + A")
+                    # elif mods & pygame.KMOD_SHIFT:
+                    #     print("pressed: SHIFT + A")
+
+
+                                            # thing = False
+                        # couninius_CTRL_Z += 1
+                        # if couninius_CTRL_Z >= 2:
+                        #     src_x_index, src_y_index = dst_x_index, dst_y_index
+                        #     thing = True
+                        # print("pressed: CTRL + Z")
+                        # game_board.troops_array = undo_stack.pop().troops_array
+                        # game_board.draw_pieces()
+                        # if EAT and isinstance(game_board[ src_x_index, src_y_index],Troop) and game_board[ src_x_index, src_y_index].can_eat(game_board):
+                        #     game_board.update_turn(-1)
+
+
+
+        # # no pieces between two positions
+        # if len(in_between_troop_locs) == 0:
+        #     # its bad - in order to eat theres need to be 1 in between
+        #     if code == 1:
+        #         return in_between_troop_locs
+        #     # its ok -  move without eating
+        #     return True
+        # # 1 piece between two positions
+        # elif len(in_between_troop_locs) == 1:
+        #     # a piece of the same color cant move past a piece of its own color
+        #     if self._current_troops_array[in_between_troop_locs[0][0]][in_between_troop_locs[0][1]].color == self._current_troops_array[src_x_index][src_y_index].color:
+        #         # same color - bad 
+        #         if code == 1:
+        #             return []
+        #         else:
+        #             return False
+        #     # meaning they have diffrent color - GOOD - return the to_be_eaten_piece
+        #     elif code == 1:
+        #         return in_between_troop_locs
+        #     # it is possible to advance to this location
+        #     return True
+        # # more than piece between the two positions - damka is all about 1 
+        # if code == 1:
+        #     return []
+        # return False
