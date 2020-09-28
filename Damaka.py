@@ -163,7 +163,8 @@ if __name__ == "__main__":
                 x_index, y_index = get_index(*pygame.mouse.get_pos())
                 print(f"Source Board index: {x_index}, {y_index}")
                 temp_piece = piece_mousedown(game_board, x_index, y_index)
-
+            
+            # i am adding this line to see if shit happens
             if event.type == pygame.MOUSEBUTTONUP:
                 print("\n-------MOUSEBUTTONUP------")
                 dst_x_index, dst_y_index = get_index(*pygame.mouse.get_pos())
