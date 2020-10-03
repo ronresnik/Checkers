@@ -13,6 +13,10 @@ Class Board
 Class Regular Troop
 Class Queen Troop
 
+if the current is dirrent the remote:
+   git pull origin master --rebase
+git commit -a -m "pls idk any more"
+git push origin master
 
  
     # def __getattribute__(self, attribute):
