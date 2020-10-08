@@ -1,27 +1,12 @@
 """
 """
 import pygame
-from board import Board
+import time
 from game import Game
-
-# FPS = 60 # frames per second setting
-
-# set color with rgb
-
+from algorithm import minimax
+from constants import RED
 # Beginning of logic
 GAME_EXIT = False
-
-"""
- inital_troops_array= \
-                    [[1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [2,2,2,2,2,2,2,2],
-                    [2,2,2,2,2,2,2,2],
-                    [2,2,2,2,2,2,2,2]]
-"""
 
 
 def get_board_position(x_dest, y_dest):
@@ -34,15 +19,28 @@ if __name__ == "__main__":
     # drawig the board
     pygame.init()
     game = Game()
+    game.board.draw_pieces()
     while not GAME_EXIT:  # Main game loop
         for event in pygame.event.get():
+
+            if game.winner:
+                print(f"Congartulations Player Color {game.winner} WON!!!")
+                pygame.quit()
+                break
+
+            if game._Game__turn == RED:
+                t0 = time.perf_counter()
+                gg, new_game = minimax(game, 4, RED)
+                print("TIME: ", time.perf_counter() - t0)
+                game = new_game
+                game.board.draw_pieces()
 
             if event.type == pygame.QUIT:
                 GAME_EXIT = True
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 x, y = get_board_position(*pygame.mouse.get_pos())
-                game.play(x, y)
+                game.play(x, y, "PLAYER")
 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_z:

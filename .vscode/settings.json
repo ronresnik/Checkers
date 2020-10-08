@@ -1,3 +1,4 @@
 {
-    "editor.wordWrap": "on"
+    "editor.wordWrap": "on",
+    "python.pythonPath": "P:\\Programs\\Python3.8\\python.exe"
 }

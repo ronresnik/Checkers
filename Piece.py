@@ -8,7 +8,15 @@ Returns:
 """
 import os
 import pygame
-from constants import RANGE, TILE_WIDTH, BASE_DIR, WHITE_BASE, BLACK_BASE
+from copy import deepcopy
+from constants import RANGE, TILE_WIDTH, BASE_DIR, RED_BASE, BLACK_BASE, RED, BLACK
+
+RIGHT_EAT = ("{}+1", "{}-1*{}")
+BACK_RIGHT_EAT = ("{}+1", "{}-1*-{}")
+LEFT_EAT = ("{}-1", "{}-1*{}")
+BACK_LEFT_EAT = ("{}-1", "{}-1*-{}")
+LEFT_COL = 0
+RIGHT_COL = 7
 
 
 class Troop:
@@ -25,9 +33,9 @@ class Troop:
         self.color = color
 
     def __repr__(self):
-        return "1" if self.color == "Red" else "2"
+        return "1" if self.color == RED else "2"
 
-    def set_new_cordinates(self, x, y):
+    def set_new_cordinates(self, x, y, game):
         """[summary]
 
         """
@@ -36,88 +44,124 @@ class Troop:
         self.x_picture = (self.x * TILE_WIDTH) + 25
         self.y_picture = (self.y * TILE_WIDTH) + 25
 
-        if (x, y) in WHITE_BASE and self.color == "Black" \
-                or (x, y) in BLACK_BASE and self.color == "Red":
+        if (x, y) in RED_BASE and self.color == BLACK \
+                or (x, y) in BLACK_BASE and self.color == RED:
+            color_name = "Black" if self.color == BLACK else "Red"
+            game.__dict__[f"{color_name.lower()}_queen_left"] += 1
+            game.__dict__[f"{color_name.lower()}_left"] -= 1
             return Queen(*[self.__dict__[key]
                            for key in self.__dict__.keys() if key != "image"])
         return self
 
-    def can_eat(self, game_board, get_locs=False):
-        "possible locations"
-        locs = []
-        for loc in [(self.x+i*2, self.y+j*2, self.x+i, self.y+j)
-                    for i in range(-1, 2, 2) for j in range(-1, 2, 2)
-                    if (self.x+i*2, self.y+j*2) in RANGE
-                    and (self.x+i, self.y+j) in RANGE]:
-            if game_board.is_loc_free(loc[0], loc[1]) \
-                    and isinstance(game_board[loc[2], loc[3]], Troop) \
-                    and game_board[loc[2], loc[3]].color != self.color:
-                if get_locs:
-                    locs.append(loc)
-                else:
-                    return True
-        if get_locs:
-            return locs
-        return False
+    def get_eat_locs(self, game, src_x, src_y, i, eat_move, color, prevoius):
+        """[summary]
 
-    def can_advance(self, dst_x, dst_y, game, just_eat=False, get_locs=False):
-        """ """
-        if not game.it_is_this_color_turn(self):
-            return False
-        # distinguish between simple moving and eating with moving
-        possible_loc1 = None
-        possible_loc2 = None
-        eat_loc1 = None
-        eat_loc2 = None
-        if self.color == "Red":
+        Args:
+            game ([type]): [description]
+            src_x ([type]): [description]
+            src_y ([type]): [description]
+            i ([type]): [description]
+            eat_move ([type]): [description]
+            color ([type]): [description]
+            prevoius ([type]): [description]
 
-            if self.x == 7:
-                possible_loc1 = (self.x-1, self.y+1)
-                eat_loc1 = (self.x-2, self.y+2)
-            elif self.x == 0:
-                possible_loc1 = (self.x+1, self.y+1)
-                eat_loc1 = (self.x+2, self.y+2)
-            else:
-                possible_loc1 = (self.x-1, self.y + 1)
-                possible_loc2 = (self.x+1, self.y + 1)
-                eat_loc1 = (self.x-2, self.y + 2)
-                eat_loc2 = (self.x+2, self.y + 2)
+        Returns:
+            [type]: [description]
+        """
+        eaten_x_string, eaten_y_string = eat_move
+        eaten_x = int(eval(eaten_x_string.format(src_x)))
+        eaten_y = int(eval(eaten_y_string.format(src_y, i)))
+        eaten_x_string = eaten_x_string.replace('1', '2')
+        eaten_y_string = eaten_y_string.replace('1', '2')
+        dest_x = int(eval(eaten_x_string.format(src_x)))
+        dest_y = int(eval(eaten_y_string.format(src_y, i)))
+        if game.board.is_loc_free(dest_x, dest_y, prevoius) and isinstance(game.board[eaten_x, eaten_y], Troop) and game.board[eaten_x, eaten_y].color != color:
+            return (True, eaten_x, eaten_y, dest_x, dest_y)
+        return (False, eaten_x, eaten_y, dest_x, dest_y)
 
-        else:  # MUST self.color == "Black"
+    def can_eat(self, game, possible_locs, color, prevoius, src_x, src_y, i, eat_move):
+        """[summary]"""
+        # try to get the etean locs and dest locs
+        can_eat, eaten_x, eaten_y, dest_x, dest_y = self.get_eat_locs(
+            game, src_x, src_y, i, eat_move, color, prevoius)
+        # if successful
+        if can_eat:
+            possible_locs[(src_x, src_y, dest_x, dest_y)] = [
+                (eaten_x, eaten_y)]
+            self.moving_algorithem(dest_x, dest_y, True, game,
+                                   possible_locs, color, prevoius=(src_x, src_y))
 
-            if self.x == 0:
-                possible_loc1 = (self.x+1, self.y-1)
-                eat_loc1 = (self.x+2, self.y-2)
-            elif self.x == 7:
-                possible_loc1 = (self.x-1, self.y-1)
-                eat_loc1 = (self.x-2, self.y-2)
-            else:
-                possible_loc1 = (self.x - 1, self.y - 1)
-                possible_loc2 = (self.x + 1, self.y - 1)
-                eat_loc1 = (self.x - 2, self.y - 2)
-                eat_loc2 = (self.x + 2, self.y - 2)
-        try:
-            eaten_x, eaten_y = game.board.get_in_between_cordinates(
-                self.x, self.y, dst_x, dst_y)
-            if(isinstance(game.board[eaten_x, eaten_y], Troop)
-                    and game.board[eaten_x, eaten_y].color != self.color):
-                possible_locs = [possible_loc1,
-                                 possible_loc2, eat_loc1, eat_loc2]
-            else:
-                raise ValueError
-        except ValueError:
-            possible_locs = [possible_loc1, possible_loc2]
-        if just_eat:
-            for loc in self.can_eat(game.board, get_locs=True):
-                possible_locs.append((loc[0], loc[1]))
-        possible_locs = [loc for loc in possible_locs if loc is not None and loc in RANGE
-                         and game.board.is_loc_free(loc[0], loc[1])]
-        print("possible advancing locations", possible_locs)
-        if get_locs:
+    def moving_algorithem(self, x, y, just_eat, game, possible_locs, color, prevoius=None):
+        # Do not search for additional locs when you get crowned
+        if ((x, y) in RED_BASE and color == BLACK) or ((x, y) in BLACK_BASE and color == RED):
             return possible_locs
-        if (dst_x, dst_y) in possible_locs:
-            return True
-        return False
+        # in order to later check if possible locations were added
+        #save_start = deepcopy(possible_locs)
+        if self.color == RED:
+            i = -1
+        else:  # MUST self.color == BLACK
+            i = 1
+        if x == LEFT_COL:
+            if not just_eat:
+                possible_locs[(x, y, x+1, y-1*i)] = []
+            # checks if self can eat RIGHT - is can - updates possible_locs
+            self.can_eat(game, possible_locs, color, prevoius, x, y, i,
+                         RIGHT_EAT)
+        elif x == RIGHT_COL:
+            if not just_eat:
+                possible_locs[(x, y, x-1, y-1*i)] = []
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, LEFT_EAT)
+        else:
+            if not just_eat:
+                possible_locs[(x, y, x - 1, y - 1*i)] = []
+                possible_locs[(x, y, x + 1, y - 1*i)] = []
+
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, LEFT_EAT)
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, RIGHT_EAT)
+
+            if just_eat:
+                self.can_eat(game, possible_locs, color, prevoius,
+                             x, y, i, BACK_LEFT_EAT)
+                self.can_eat(game, possible_locs, color, prevoius,
+                             x, y, i, BACK_RIGHT_EAT)
+
+        return possible_locs
+
+    def get_valid_moves(self, game, can_advance=None, get_eaten=None):
+        """ """
+        #t0 = time.perf_counter()
+        empty_dict = {}
+        possible_locs = self.moving_algorithem(self.x, self.y, False, game,
+                                               empty_dict, self.color)
+        for _ in range(4):
+            append_to_del = []
+            y = {}
+            starts_dests = possible_locs.keys()
+            for tail in starts_dests:
+                for head in starts_dests:
+                    if (head[0], head[1]) == (tail[2], tail[3]):
+                        y[(tail[0], tail[1], head[2], head[3])
+                          ] = possible_locs[tail] + possible_locs[head]
+                        append_to_del.append(head)
+            possible_locs.update(y)
+            for to_del in list(set(append_to_del)):
+                del possible_locs[to_del]
+        possible_locs_list = [(item[0][2], item[0][3]) for item in possible_locs.items()
+                              if (item[0][2], item[0][3]) in RANGE
+                              and game.board.is_loc_free(item[0][2], item[0][3])]
+        possible_locs_dict = {(item[0][2], item[0][3]): possible_locs[item[0]] for item in possible_locs.items()
+                              if (item[0][2], item[0][3]) in RANGE
+                              and game.board.is_loc_free(item[0][2], item[0][3])}
+        if can_advance:
+            if (can_advance[0], can_advance[1]) in possible_locs_list:
+                return True
+            return False
+        if get_eaten:
+            return possible_locs_dict
+        return possible_locs_list
 
 
 class Queen(Troop):
@@ -128,43 +172,96 @@ class Queen(Troop):
     """
 
     def __init__(self, state, x, y, x_picture, y_picture, color):
+        picture_color = "Black" if color == BLACK else "Red"
         image = pygame.image.load(os.path.join(
-            BASE_DIR, f"static\\images\\{color}Queen.png"))
+            BASE_DIR, f"static\\images\\{picture_color}Queen.png"))
         super().__init__(image, state, x, y, x_picture, y_picture, color)
 
     def __repr__(self):
-        return "-1" if self.color == "Red" else "-2"
+        return "-1" if self.color == RED else "-2"
 
-    # TODO - document can_eat
+    def set_new_cordinates(self, x, y, game):
+        """[summary]
 
-    def can_eat(self, game_board, get_locs=False):
-        possible_locs = [(self.x+i, self.y+j) for j in range(-10, 10) for i in range(-10, 10)
-                         if abs(i) == abs(j) and (self.x+i, self.y+j) in RANGE
-                         and ((self.x+i, self.y+j) != (self.x, self.y))
-                         and game_board.is_loc_free(self.x+i, self.y+j)
-                         and len(game_board.is_only_one_enemy_in_between(self.x, self.y, self.x+i, self.y+j, 1)) == 1]
-        print("possible eat locations", possible_locs)
-        if get_locs:
-            return possible_locs
-        if len(possible_locs) >= 1:
-            return True
-        return False
+        """
+        self.x = x
+        self.y = y
+        self.x_picture = (self.x * TILE_WIDTH) + 25
+        self.y_picture = (self.y * TILE_WIDTH) + 25
+        return self
 
-    # TODO - document can_advance
-    def can_advance(self, dst_x, dst_y, game, just_eat=False, get_locs=False):
-        if not game.it_is_this_color_turn(self):
+    def moving_algorithem(self, x, y, just_eat, game, possible_locs, color, prevoius=None):
+
+        #save_start = deepcopy(possible_locs)
+        if self.color == RED:
+            i = -1
+        else:  # MUST self.color == BLACK
+            i = 1
+        if x == LEFT_COL:
+            if not just_eat:
+                possible_locs[(x, y, x+1, y-1*i)] = []
+                possible_locs[(x, y, x+1, y-1*-i)] = []
+            # if the dest is free and in between ia a enemy Troop - Than I'ts OK for eating
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, RIGHT_EAT)
+        elif x == RIGHT_COL:
+            if not just_eat:
+                possible_locs[(x, y, x-1, y-1*i)] = []
+                possible_locs[(x, y, x-1, y-1*-i)] = []
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, LEFT_EAT)
+        else:
+            if not just_eat:
+                possible_locs[(x, y, x - 1, y - 1*i)] = []
+                possible_locs[(x, y, x + 1, y - 1*i)] = []
+                possible_locs[(x, y, x - 1, y - 1*-i)] = []
+                possible_locs[(x, y, x + 1, y - 1*-i)] = []
+
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, LEFT_EAT)
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, RIGHT_EAT)
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, BACK_LEFT_EAT)
+            self.can_eat(game, possible_locs, color,
+                         prevoius, x, y, i, BACK_RIGHT_EAT)
+
+        # # If no possible locations are found
+        # if possible_locs == save_start:
+        #     empty = {}
+        #     # Then update with nothing in order to finish the recursion pattern
+        #     return possible_locs.update(empty)
+        return possible_locs
+
+    def get_valid_moves(self, game, can_advance=None, get_eaten=None):
+        """ """
+        #t0 = time.perf_counter()
+        empty_dict = {}
+        possible_locs = self.moving_algorithem(self.x, self.y, False, game,
+                                               empty_dict, self.color)
+        for _ in range(4):
+            append_to_del = []
+            y = {}
+            starts_dests = possible_locs.keys()
+            for tail in starts_dests:
+                for head in starts_dests:
+                    if (head[0], head[1]) == (tail[2], tail[3]):
+                        y[(tail[0], tail[1], head[2], head[3])
+                          ] = possible_locs[tail] + possible_locs[head]
+                        append_to_del.append(head)
+            possible_locs.update(y)
+            for to_del in list(set(append_to_del)):
+                del possible_locs[to_del]
+        possible_locs_list = [(item[0][2], item[0][3]) for item in possible_locs.items()
+                              if (item[0][2], item[0][3]) in RANGE
+                              and game.board.is_loc_free(item[0][2], item[0][3])]
+        possible_locs_dict = {(item[0][2], item[0][3]): possible_locs[item[0]] for item in possible_locs.items()
+                              if (item[0][2], item[0][3]) in RANGE
+                              and game.board.is_loc_free(item[0][2], item[0][3])}
+        if can_advance:
+            if (can_advance[0], can_advance[1]) in possible_locs_list:
+                return True
             return False
-        # distinguish between simple moving and eating with moving
-        possible_locs = [(self.x+i, self.y+j) for j in range(-10, 10) for i in range(-10, 10)
-                         if abs(i) == abs(j) and (self.x+i, self.y+j) in RANGE
-                         and ((self.x+i, self.y+j) != (self.x, self.y))
-                         and game.board.is_loc_free(self.x+i, self.y+j)
-                         and game.board.is_only_one_enemy_in_between(self.x, self.y, self.x+i, self.y+j)]
-        print("possible advancing locations", possible_locs)
-        if just_eat:
-            possible_locs += self.can_eat(game.board, get_locs=True)
-        if get_locs:
-            return possible_locs
-        if (dst_x, dst_y) in possible_locs:
-            return True
-        return False
+        if get_eaten:
+            return possible_locs_dict
+        return possible_locs_list

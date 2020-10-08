@@ -3,77 +3,54 @@
 from collections import deque
 import pygame
 from board import Board
-from piece import Troop, Queen
-from constants import WHITE_BASE, BLACK_BASE, RED, GREY, WHITE, RED, TILE_WIDTH
-# FPS = 60 # frames per second setting
-
-# set color with rgb
-
-# Beginning of logic
-EAT = False  # Explantaion:
-
-"""
- inital_troops_array= \
-                    [[1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1],
-                    [1,1,1,1,1,1,1,1],
-                    [0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0],
-                    [2,2,2,2,2,2,2,2],
-                    [2,2,2,2,2,2,2,2],
-                    [2,2,2,2,2,2,2,2]]
-"""
+from piece import Troop
+from constants import RED, BLACK
 
 
 class Game():
 
-    def __init__(self, board=None, undo_stack=deque(), __turn="Red"):
+    def __init__(self, board=None, undo_stack=deque(), __turn=RED, red_left=12, black_left=12, red_queen_left=0, black_queen_left=0, winner=None):
         if board == None:
             self.board = Board()
         else:
             self.board = Board(*board)
         self.undo_stack = undo_stack
         self.__turn = __turn
+        self.red_left = red_left
+        self.black_left = black_left
+        self.red_queen_left = red_queen_left
+        self.black_queen_left = black_queen_left
+        self.winner = winner
 
     def to_list(self, x, y):
-        return [self.board.to_list(x, y), self.undo_stack, self.__turn]
+        return [self.board.to_list(x, y), self.undo_stack, self.__turn, self.red_left, self.black_left, self.red_queen_left, self.black_queen_left, self.winner]
 
-    def change_turn(self, code=1):
+    def change_turn(self):
         """[summary]
         """
-        if self.__turn == "Red":
-            self.__turn = "Black"
+        self.winner = self.__turn
+        if self.__turn == RED:
+            self.__turn = BLACK
+            color = "Black"
         else:
-            self.__turn = "Red"
+            self.__turn = RED
+            color = "Red"
+        if not (self.__dict__[f"{color.lower()}_left"] == 0 and self.__dict__[f"{color.lower()}_queen_left"] == 0):
+            self.winner = None
 
     def it_is_this_color_turn(self, piece):
         """[summary]
 
-        Returns:
-            [type]: [description]
         """
         return self.__turn == piece.color
 
-    def try_to_eat(self, src_x, src_y, piece):
-
-        dst_x, dst_y, color = piece.x, piece.y, piece.color
-        global EAT
-        try:
-            eaten_x, eaten_y = self.board.get_in_between_cordinates(
-                src_x, src_y, dst_x, dst_y)
-            if(isinstance(self.board[eaten_x, eaten_y], Troop)
-                    and self.board[eaten_x, eaten_y].color != color):
-                self.board[eaten_x, eaten_y] = 0
-                print(f"Troop in index: {eaten_x},{eaten_y} was just eaten")
-                EAT = True
-
-        except ValueError:
-            print("Simple advancment move preformed")
-            EAT = False
-
-        except IndexError:
-            print("multiple tiles move")
-            EAT = False
+    def remove_eaten(self, dst_x, dst_y, piece):
+        """[summary]
+        """
+        eaten_pices = piece.get_valid_moves(self, get_eaten=True)
+        if eaten_pices[(dst_x, dst_y)]:
+            for piece_to_be_removed in eaten_pices[(dst_x, dst_y)]:
+                self.board[piece_to_be_removed[0], piece_to_be_removed[1]] = 0
 
     def save_game(self, piece):
         """[summary]
@@ -82,44 +59,25 @@ class Game():
             undo_game = self.to_list(
                 piece.x, piece.y)
             self.undo_stack.append(undo_game)
-            # EAT = False
             self.board.piece = piece
             return True
         except Exception as e:
             return False
 
-    def change_player(self, src_x, src_y, piece):
-        # NOW WE HAVE ONLY MULTIPLE EATING SARUF saruf_check
-        # TODO NotImplemented - simple move - could eat
-        global EAT
-        dst_x, dst_y = piece.x, piece.y
-        if self.board.has_SARUF_suspicous \
-                and self.board.suspicous_could_eat(src_x, src_y) and not EAT:  # or didnt eat and could eat - pass color
-            print(
-                f"SARUF! - {self.board.SARUF_suspicous_x},{self.board.SARUF_suspicous_y} could eat again ()but you didn't")
-            self.board[self.board.SARUF_suspicous_x,
-                       self.board.SARUF_suspicous_y] = 0
-
-            self.change_turn()
-
-        elif (EAT and self.board[dst_x, dst_y].can_eat(self.board)):
-            print("You can play again")
-            self.board.set_SARUF_suspicous(
-                dst_x, dst_y)
-        else:
-            print(f"Color {piece.color} Turn Ended.")
-            self.board.has_SARUF_suspicous = False
-            self.change_turn()
-
-        self.board.piece = None
-
-    def update_game(self, src_x, src_y, piece):
-        self.board[src_x, src_y] = 0
+    def update_game(self, x, y, piece):
+        """[summary]
+        """
+        self.board[piece.x, piece.y] = 0
+        piece = piece.set_new_cordinates(x, y, self)
         piece.state = True
         self.board[piece.x, piece.y] = piece
-        print("END")
+        self.change_turn()
+        self.board.piece = None
+        # print("END")
 
     def get_piece(self, x,  y):
+        """[summary]
+        """
         try:
             piece = self.board[x, y]
             if self.it_is_this_color_turn(piece):
@@ -131,18 +89,16 @@ class Game():
             print("Please choose a tile contaning a piece")
             return 0
 
-    def play(self, x, y):
-        global EAT
+    def play(self, x, y, code=None):
+        """[summary]
+        """
         if self.board.piece:
             piece = self.board.piece
-            if isinstance(piece, Troop) and piece.can_advance(x, y, self, EAT):
-
-                src_x, src_y = piece.x, piece.y
-                piece = piece.set_new_cordinates(x, y)
-
-                self.try_to_eat(src_x, src_y, piece)
-                self.update_game(src_x, src_y, piece)
-                self.change_player(src_x, src_y, piece)
+            if piece.get_valid_moves(self, can_advance=(x, y)):
+                self.remove_eaten(x, y, piece)
+                self.update_game(x, y, piece)
+                if code == "PLAYER":
+                    self.board.draw_pieces()
 
             elif isinstance(piece, int) or piece is None:
                 # {non piece land}
@@ -154,8 +110,32 @@ class Game():
                            piece.y] = piece
                 print("The troop canot advance to the desired destination")
                 self.board.piece = None
+                if code == "PLAYER":
+                    self.board.draw_pieces()
         else:
             piece = self.get_piece(x, y)
             if isinstance(piece, Troop):
                 self.save_game(piece)
-                self.board.draw_valid_moves(piece, self)
+                if code == "PLAYER":
+                    self.board.draw_valid_moves(piece, self)
+
+    # ---------------- AI ----------------------
+    def evaluate(self):
+        # evaluate red-black?
+        return self.red_left - self.black_left + (self.red_queen_left * 0.5 - self.black_queen_left * 0.5)
+
+    def get_all_moves_games(self, color):
+        moves = []
+        for piece in self.board.get_all_pieces(color):
+            valid_moves = piece.get_valid_moves(self)
+            for dest_move in valid_moves:
+                new_game = self.simulate_move(piece, dest_move)
+                moves.append(new_game)
+
+        return moves
+
+    def simulate_move(self, piece, dest_move):
+        new_game = Game(*self.to_list(piece.x, piece.y))
+        new_game.play(piece.x, piece.y, "AI")
+        new_game.play(dest_move[0], dest_move[1], "AI")
+        return new_game
